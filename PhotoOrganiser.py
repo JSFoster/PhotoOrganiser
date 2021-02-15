@@ -18,27 +18,33 @@ def createGUI():
 
     window.title("Photo Organiser")
 
+    window.geometry("500x100")
+
     label = Label(window, text = "Select folder to organise:", width = 20)
 
     label.grid(column = 0, row = 0, columnspan = 2, padx = 5, pady = 5)
 
-    folderText = Text(window, height = 1, width = 30, state = DISABLED)
+    folderText = Text(window, height = 1, state = DISABLED, width = 30)
 
-    folderText.grid(column = 0, row = 1, columnspan = 2, padx = 5, pady = 5, sticky = E+W)
+    folderText.grid(column = 0, row = 1, columnspan = 1, padx = 5, pady = 5, sticky = E+W)
 
     dirButton = Button(window, text = "Choose folder..", command = partial(setDir, folderText))
 
-    dirButton.grid(column = 0, row = 2, columnspan = 2, padx = 5, pady = 5)
+    dirButton.grid(column = 1, row = 1, columnspan = 1, padx = 5, pady = 5, sticky = E)
 
-    runButton = Button(window, text = "Run", command = runProg, width = 10)
+    button_frame = Frame(window)
+
+    button_frame.grid(column = 0, row = 3, columnspan = 2)
+
+    runButton = Button(button_frame, text = "Run", command = runProg, width = 10)
 
     runButton.grid(column = 0, row = 3, padx = 5, pady = 5, sticky = SW)
 
-    flattenButton = Button(window, text = "Flatten", command = flattenProg, width = 10)
+    flattenButton = Button(button_frame, text = "Flatten", command = flattenProg, width = 10)
 
     flattenButton.grid(column = 1, row = 3, padx = 5, pady = 5, sticky = SE)
 
-    window.grid_columnconfigure(1, weight = 1)
+    window.grid_columnconfigure(0, weight = 1)
 
     window.mainloop()
 
@@ -54,9 +60,6 @@ def setDir(folderText):
 def runProg():
     if dir != None:
         print("Running...")
-        # for m in months:
-        #     if not os.path.exists(dir + "/" + m):
-        #         os.makedirs(dir + "/" + m)
         with os.scandir(dir) as entries:
             for entry in entries:
                 if entry.name.endswith(filetype):
@@ -67,31 +70,31 @@ def runProg():
                             if tag == 'Image DateTime':
                                 date = str(tags[tag]).split(':')
                                 year, month = date[0], date[1]
-                                if not os.path.exists(dir + "/" + year):
-                                    os.makedirs(dir + "/" + year)
-                                if not os.path.exists(dir + "/" + year + "/" + months[int(month)]):
-                                    os.makedirs(dir + "/" + year + "/" + months[int(month)])
-                    shutil.move(dir + "/" + entry.name, dir + "/" + year + "/" + months[int(month)] + "/" + entry.name)
+                                if not os.path.exists(os.path.join(dir, year)):
+                                    os.makedirs(os.path.join(dir, year))
+                                if not os.path.exists(os.path.join(dir, year, months[int(month)])):
+                                    os.makedirs(os.path.join(dir, year, months[int(month)]))
+                    shutil.move(os.path.join(dir, entry.name), os.path.join(dir, year, months[int(month)], entry.name))
+        print("Completed!")
 
 def flattenProg():
-    with os.scandir(dir) as entries:
-        for entry in entries:
-            print(entry)
+    print("Running...")
+    with os.scandir(dir) as years:
+        for year in years:
+            if os.path.isdir(os.path.join(dir, year)):
+                with os.scandir(os.path.join(dir, year)) as months:
+                    for month in months:
+                        with os.scandir(os.path.join(dir, year, month)) as entries:
+                            for entry in entries:
+                                shutil.move(dir + "/" + year.name + "/"  + month.name + "/" + entry.name, dir + "/" + entry.name)
+                        print(os.path.join(dir, year, month))
+                        if len(os.listdir(os.path.join(dir, year, month))) == 0:
+                            os.rmdir(os.path.join(dir, year, month))
+                if len(os.listdir(os.path.join(dir, year))) == 0:
+                    os.rmdir(os.path.join(dir, year))
+    print("Completed!")
+
 
 ## START PROGRAM
 
 createGUI()
-
-
-#
-# f = open("IMG_2343.HEIC", 'rb')
-#
-# tags = exifread.process_file(f)
-#
-# for tag in tags:
-#     if tag == 'Image DateTime':
-#         date = str(tags[tag]).split(':')
-#         year, month = date[0], date[1]
-#         print(year)
-#         print(month)
-#
