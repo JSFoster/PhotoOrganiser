@@ -8,6 +8,7 @@ from functools import partial
 dir = None
 filetype = (".HEIC", ".JPG", ".heic" ".jpg")
 months = {1: "01 - January", 2: "02 - February", 3: "03 - March", 4: "04 - April", 5: "05 - May", 6: "06 - June", 7: "07 - July", 8: "08 - August", 9: "09 - September", 10: "10 - October", 11: "11 - November", 12: "12 - December"}
+incDay = None
 
 # TODO: Need Hachoir for mov
 
@@ -20,6 +21,10 @@ def createGUI():
 
     window.geometry("500x100")
 
+    global incDay
+
+    incDay = BooleanVar()
+
     label = Label(window, text = "Select folder to organise:", width = 20)
 
     label.grid(column = 0, row = 0, columnspan = 2, padx = 5, pady = 5)
@@ -31,6 +36,10 @@ def createGUI():
     dirButton = Button(window, text = "Choose folder..", command = partial(setDir, folderText))
 
     dirButton.grid(column = 1, row = 1, columnspan = 1, padx = 5, pady = 5, sticky = E)
+
+    includeDays = Checkbutton(window, text = "Include Days?", variable = incDay)
+
+    includeDays.grid(column = 0, row = 3, padx = 5, pady = 5, sticky = W)
 
     button_frame = Frame(window)
 
@@ -69,12 +78,18 @@ def runProg():
                         for tag in tags:
                             if tag == 'Image DateTime':
                                 date = str(tags[tag]).split(':')
-                                year, month = date[0], date[1]
+                                year, month, day = date[0], date[1], date[2].split(' ')[0]
                                 if not os.path.exists(os.path.join(dir, year)):
                                     os.makedirs(os.path.join(dir, year))
                                 if not os.path.exists(os.path.join(dir, year, months[int(month)])):
                                     os.makedirs(os.path.join(dir, year, months[int(month)]))
-                    shutil.move(os.path.join(dir, entry.name), os.path.join(dir, year, months[int(month)], entry.name))
+                                if incDay.get() and not os.path.exists(os.path.join(dir, year, months[int(month)], day)):
+                                    os.makedirs(os.path.join(dir, year, months[int(month)], day))
+                    if incDay.get():
+                        shutil.move(os.path.join(dir, entry.name),
+                                    os.path.join(dir, year, months[int(month)], day, entry.name))
+                    else:
+                        shutil.move(os.path.join(dir, entry.name), os.path.join(dir, year, months[int(month)], entry.name))
         print("Completed!")
 
 def flattenProg():
@@ -84,12 +99,23 @@ def flattenProg():
             if os.path.isdir(os.path.join(dir, year)):
                 with os.scandir(os.path.join(dir, year)) as months:
                     for month in months:
-                        with os.scandir(os.path.join(dir, year, month)) as entries:
-                            for entry in entries:
-                                shutil.move(dir + "/" + year.name + "/"  + month.name + "/" + entry.name, dir + "/" + entry.name)
-                        print(os.path.join(dir, year, month))
-                        if len(os.listdir(os.path.join(dir, year, month))) == 0:
-                            os.rmdir(os.path.join(dir, year, month))
+                        if os.path.isdir(os.path.join(dir, year, month)):
+                            if incDay.get():
+                                with os.scandir(os.path.join(dir, year, month)) as days:
+                                    for day in days:
+                                        if os.path.isdir(os.path.join(dir, year, month, day)):
+                                            with os.scandir(os.path.join(dir, year, month, day)) as entries:
+                                                for entry in entries:
+                                                    shutil.move(dir + "/" + year.name + "/" + month.name + "/" + day.name + "/" + entry.name,
+                                                                dir + "/" + entry.name)
+                                            if len(os.listdir(os.path.join(dir, year, month, day))) == 0:
+                                                os.rmdir(os.path.join(dir, year, month, day))
+                            else:
+                                with os.scandir(os.path.join(dir, year, month)) as entries:
+                                    for entry in entries:
+                                        shutil.move(dir + "/" + year.name + "/"  + month.name + "/" + entry.name, dir + "/" + entry.name)
+                            if len(os.listdir(os.path.join(dir, year, month))) == 0:
+                                os.rmdir(os.path.join(dir, year, month))
                 if len(os.listdir(os.path.join(dir, year))) == 0:
                     os.rmdir(os.path.join(dir, year))
     print("Completed!")
